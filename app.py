@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3
-from datetime import datetime
-import requests  # This is safely imported up here at the very top!
+import os                             # ◄── Make sure this is present!
+from datetime import datetime         # ◄── Make sure this is present!
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app) # Enables your Netlify frontend to communicate safely with this backend
 
 DB_NAME = "data_hub.db"
 
