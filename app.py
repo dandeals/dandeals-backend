@@ -175,7 +175,70 @@ def payment_success_webhook():
         return jsonify({"success": False, "message": "Invalid status."}), 400
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
+@app.route('/admin/orders', methods=['GET'])
+def view_orders():
+    try:
+        conn = sqlite3.connect('orders.db')
+        cursor = conn.cursor()
+        
+        # Pull the latest 50 orders from the database
+        cursor.execute("SELECT id, phone, network, size, tx_ref, status, created_at FROM orders ORDER BY id DESC LIMIT 50")
+        orders = cursor.fetchall()
+        conn.close()
+        
+        # Build a simple, clean HTML layout to read easily on your phone
+        html = """
+        <html>
+        <head>
+            <title>Dan Deals Admin Portal</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: sans-serif; background: #111827; color: #fff; padding: 20px; }
+                h2 { color: #10b981; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1f2937; }
+                th, td { padding: 12px; text-align: left; border-bottom: 1px solid #374151; }
+                th { background: #111827; color: #9ca3af; }
+                .SUCCESS { color: #10b981; font-weight: bold; }
+                .PENDING { color: #f59e0b; }
+            </style>
+        </head>
+        <body>
+            <h2>📊 Dan Deals Live Order Logs</h2>
+            <p>Refresh this page to see new incoming data orders.</p>
+            <div style="overflow-x:auto;">
+                <table>
+                    <tr>
+                        <th>ID</th>
+                        <th>Recipient Phone</th>
+                        <th>Network</th>
+                        <th>Size (GB)</th>
+                        <th>Status</th>
+                        <th>Time (UTC)</th>
+                    </tr>
+        """
+        
+        for order in orders:
+            html += f"""
+            <tr>
+                <td>{order[0]}</td>
+                <td><strong>{order[1]}</strong></td>
+                <td>{order[2]}</td>
+                <td>{order[3]} GB</td>
+                <td class="{order[5]}">{order[5]}</td>
+                <td>{order[6]}</td>
+            </tr>
+            """
+            
+        html += """
+                </table>
+            </div>
+        </body>
+        </html>
+        """
+        return html
+        
+    except Exception as e:
+        return f"Admin Portal Error: {str(e)}"
 if __name__ == '__main__':
       import os
       port = int(os.environ.get("PORT", 5000))
