@@ -86,6 +86,7 @@ def view_orders():
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        # Explicitly selecting the columns in order
         cursor.execute("SELECT id, phone, network, size, tx_ref, status, created_at FROM orders ORDER BY id DESC LIMIT 50")
         orders = cursor.fetchall()
         conn.close()
@@ -98,11 +99,11 @@ def view_orders():
             <style>
                 body { font-family: sans-serif; background: #111827; color: #fff; padding: 20px; }
                 h2 { color: #10b981; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1f2937; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1f2937; min-width: 600px; }
                 th, td { padding: 12px; text-align: left; border-bottom: 1px solid #374151; }
                 th { background: #111827; color: #9ca3af; }
                 .SUCCESS { color: #10b981; font-weight: bold; }
-                .PENDING { color: #f59e0b; }
+                .PENDING { color: #f59e0b; font-weight: bold; }
             </style>
         </head>
         <body>
@@ -114,20 +115,29 @@ def view_orders():
                         <th>ID</th>
                         <th>Recipient Phone</th>
                         <th>Network</th>
-                        <th>Size (GB)</th>
+                        <th>Size</th>
+                        <th>Reference ID</th>
                         <th>Status</th>
                         <th>Time (UTC)</th>
                     </tr>
         """
         for order in orders:
+            # order[0] = id
+            # order[1] = phone
+            # order[2] = network
+            # order[3] = size
+            # order[4] = tx_ref
+            # order[5] = status
+            # order[6] = created_at
             html += f"""
             <tr>
                 <td>{order[0]}</td>
-                <td><strong>{order[1]}</strong></td>
-                <td>{order[2]}</td>
-                <td>{order[3]} GB</td>
+                <td><strong style="color: #60a5fa; letter-spacing: 0.5px;">{order[1]}</strong></td>
+                <td><span style="background: #374151; padding: 4px 8px; border-radius: 4px; font-size: 13px;">{order[2]}</span></td>
+                <td><strong>{order[3]} GB</strong></td>
+                <td style="color: #9ca3af; font-family: monospace; font-size: 12px;">{order[4]}</td>
                 <td class="{order[5]}">{order[5]}</td>
-                <td>{order[6]}</td>
+                <td style="color: #9ca3af; font-size: 13px;">{order[6]}</td>
             </tr>
             """
         html += """</table></div></body></html>"""
