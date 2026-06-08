@@ -1,11 +1,35 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3
-import os                             # ◄── Make sure this is present!
-from datetime import datetime         # ◄── Make sure this is present!
+import os
+from datetime import datetime
 
 app = Flask(__name__)
-CORS(app) # Enables your Netlify frontend to communicate safely with this backend
+CORS(app)
+
+# ─── FOOLPROOF DATABASE INITIALIZATION ON STARTUP ───
+def init_db():
+    db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'orders.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone TEXT NOT NULL,
+            network TEXT NOT NULL,
+            size TEXT NOT NULL,
+            amount REAL NOT NULL,
+            tx_ref TEXT UNIQUE NOT NULL,
+            status TEXT DEFAULT 'PENDING',
+            created_at TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database and 'orders' table verified successfully!")
+
+# Trigger the database build immediately when Render starts the app
+init_db()
 
 DB_NAME = "data_hub.db"
 
@@ -30,16 +54,20 @@ def deliver_data_bundle(phone, network, size):
     
     return {"status": "success", "vendor_ref": f"VEND-API-{int(datetime.utcnow().timestamp())}"}
 
-@app.route('/api/create-order', methods=['POST'])
-def create_order():
+@app.route('/admin/orders', methods=['GET'])
+def view_orders():
     try:
-        data = request.json
-        if not data:
-            return jsonify({"success": False, "error": "No data received"}), 400
-
-        phone = data.get('phone')
-        network = data.get('network', '').upper()
-        size_key = data.get('size') 
+        # Look for the exact absolute path to the database
+        db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'orders.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Pull the latest 50 orders from the database
+        cursor.execute("SELECT id, phone, network, size, tx_ref, status, created_at FROM orders ORDER BY id DESC LIMIT 50")
+        orders = cursor.fetchall()
+        conn.close()
+        
+        # ... Rest of your HTML layout code remains exactly the same ...
 
         # 📊 COMPLETE RETAIL CONFIGURATION MATRIX FOR DAN DEALS
         RETAIL_PRICING = {
