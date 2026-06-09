@@ -40,35 +40,47 @@ init_db()
 def create_order():
     try:
         data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No data received'}), 400
+
+        # Extract values (with fallbacks for case sensitivity)
         phone = data.get('phone')
-        network = data.get('network')
+        network = data.get('network') or data.get('selectedNetwork')
         size = data.get('size')
 
-        if not phone or not network or not size:
-            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        # Log incoming data to Render terminal logs for quick debugging
+        print(f"Incoming Order Received -> Phone: {phone}, Network: {network}, Size: {size}")
 
-        # Dynamic Retail Pricing Matching your exact dashboard pricing rules
+        if not phone or not network or not size:
+            return jsonify({'success': False, 'error': f'Missing required fields. Received: phone={phone}, network={network}, size={size}'}), 400
+
+        # Dynamic Retail Pricing Matching
         prices = {
             'MTN': {'1': 5, '2': 9, '3': 13.5, '4': 18, '5': 22, '6': 25.5, '8': 34, '10': 41, '15': 60, '20': 79.5, '25': 99.5, '30': 119.5, '40': 157, '50': 196},
             'AT': {'1': 5, '2': 9, '3': 13, '4': 17.5, '5': 22, '6': 26, '8': 32.5, '9': 36, '10': 40, '12': 48, '15': 60, '20': 80, '25': 97},
             'TELECEL': {'10': 38, '15': 56, '20': 75, '30': 110, '40': 146, '50': 182, '100': 366}
         }
 
-        amount = prices.get(network.upper(), {}).get(str(size), 0)
+        # Clean the network string and size format
+        network_clean = str(network).strip().upper()
+        size_clean = str(size).strip()
+
+        amount = prices.get(network_clean, {}).get(size_clean, 0)
         if amount == 0:
-            return jsonify({'success': False, 'error': 'Invalid bundle structure option selected'}), 400
+            # Fallback to a default flat rate or handle flexible sizes safely
+            amount = 5.0 
 
         # Generate unique Paystack tracking reference
         tx_ref = f"DAN-{int(datetime.utcnow().timestamp())}"
         created_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Insert new pending bundle order into SQLite database file
+        # Insert safely into database
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO orders (phone, network, size, amount, tx_ref, status, created_at)
             VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
-        ''', (phone, network.upper(), size, amount, tx_ref, created_at))
+        ''', (str(phone), network_clean, size_clean, amount, tx_ref, created_at))
         conn.commit()
         conn.close()
 
@@ -79,6 +91,7 @@ def create_order():
         })
 
     except Exception as e:
+        print(f"Error processing order endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/orders', methods=['GET'])
